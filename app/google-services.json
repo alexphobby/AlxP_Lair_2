@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "941216969904",
+    "project_id": "alxp-lair-2",
+    "storage_bucket": "alxp-lair-2.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:941216969904:android:4b74a0f74acb6a4c24b775",
+        "android_client_info": {
+          "package_name": "com.example.alxplair2"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "941216969904-4bdfs1f012r5ar91f5i86llabtrc8a32.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCL0dJvFm9FJUvBvrs9uTcIXGydgpDOu4c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "941216969904-4bdfs1f012r5ar91f5i86llabtrc8a32.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

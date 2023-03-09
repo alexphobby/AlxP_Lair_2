@@ -2,6 +2,7 @@ package com.example.alxplair2
 
 //import androidx.compose.foundation.pager.rememberPagerState
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -13,25 +14,42 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.alexplair.MqttUtilities
-import com.example.alexplair.MyCallBack
-import com.example.alexplair.MyHome
 import com.example.alxplair2.ui.theme.AlxPLair2Theme
+import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
+import org.eclipse.paho.client.mqttv3.MqttCallback
+import org.eclipse.paho.client.mqttv3.MqttMessage
+import kotlin.random.Random
 
-class MainActivity : ComponentActivity() {
-    var mqtt = MqttUtilities
-    var my = MyCallBack
-    var myhome = MyHome
+class MainActivity : ComponentActivity(),MqttCallback {
+
+    //var myCallBack = MyCallBack
+    //var myhome = MyHome()
+
+    var temperature = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        mqtt.Connect()
+        //mqtt.cb = cb
+        //mqtt.Connect()
+
         setContent {
             AlxPLair2Theme {
-                app()
+
+//                var signInRequest = BeginSignInRequest.builder()
+//                    .setGoogleIdTokenRequestOptions(
+//                        BeginSignInRequest.GoogleIdTokenRequestOptions.builder()
+//                            .setSupported(true)
+//                            // Your server's client ID, not your Android client ID.
+//                            .setServerClientId(getString(R.string.your_web_client_id))
+//                            // Only show accounts previously used to sign in.
+//                            .setFilterByAuthorizedAccounts(true)
+//                            .build())
+//                    .
+
+                app(MainViewModel())
+//                Greeting(name = "Mutable")
                 //val pagerState = remember { mutableStateOf(1) }
                 //TopAppBarSample()
                 //loadMainPage()
@@ -42,12 +60,18 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-
     @Composable
-    fun PageContent() {
+    fun PageContent(mainViewModel: MainViewModel = MainViewModel()) {
         val clicked = remember { mutableStateOf(0) }
         val selectedTab = remember { mutableStateOf(0) }
         val selectedColor = remember { mutableStateOf(Color.Black) }
+        //var isChanged by remember( myCallBack) {
+         //   mutableStateOf(myCallBack.arrived)
+
+            // Log.e("LOG", "mqtt")
+       // }
+
+        //var arrived by remember { mutableStateOf(cb.arrived) }
 
 
 
@@ -84,7 +108,7 @@ class MainActivity : ComponentActivity() {
                         },
                     ) {
                         Text(
-                            text = "Button 1",
+                            text = "Ambient",
                             color = Color.White
                         )
 
@@ -100,7 +124,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         Text(
                             //modifier = Modifier.background(Color.White),
-                            text = "Button 2",
+                            text = "Altele",
                             color = Color.White
                         )
 
@@ -117,7 +141,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         Text(
                             //modifier = Modifier.background(Color.White),
-                            text = "Button 2",
+                            text = "Not Used",
                             color = Color.White
                         )
 
@@ -133,7 +157,7 @@ class MainActivity : ComponentActivity() {
                         //Text(modifier = Modifier.background(Color.LightGray), text = "Text 2")
                         when (selectedTab.value) {
 
-                            0 -> show1()
+                            0 -> Tab1(false,mainViewModel)
                             1 -> show2()
                             2 -> show3()
 
@@ -149,11 +173,14 @@ class MainActivity : ComponentActivity() {
 
 
     @Composable
-    @Preview
-    private fun app() {
+    private fun app(mainViewModel: MainViewModel = MainViewModel()) {
         var gradientColor1 = Color.Black
         var gradientColor2 = Color.DarkGray
         var gradient = arrayOf(0.3f to gradientColor1, 1.0f to gradientColor2)
+
+        mainViewModel.init() // Init MQTT connection
+
+
 
         Scaffold(modifier = Modifier.fillMaxSize(),
             topBar = {
@@ -176,11 +203,28 @@ class MainActivity : ComponentActivity() {
                 modifier = Modifier
                 //.padding(top = 50.dp)
             ) {
-                PageContent()
+                PageContent(mainViewModel)
             }
         }
 
     }
+
+    override fun connectionLost(cause: Throwable?) {
+        TODO("Not yet implemented")
+    }
+
+    override fun messageArrived(topic: String?, message: MqttMessage?) {
+        Log.e("LOG", "mqtt interface callback receive")
+        this.temperature = Random(10).nextInt()
+    }
+
+    override fun deliveryComplete(token: IMqttDeliveryToken?) {
+        Log.e("LOG", "mqtt interface callback delivery")
+    }
+
+//    override fun onReceive() {
+//        Log.e("LOG", "mqtt interface callback")
+//    }
 }
 
 
