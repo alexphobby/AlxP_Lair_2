@@ -1,6 +1,12 @@
 package com.example.alxplair2
 
 //import androidx.compose.foundation.pager.rememberPagerState
+
+// for a 'val' variable
+
+// for a `var` variable also add
+
+import android.content.ContentValues
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -9,6 +15,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -16,12 +24,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.alxplair2.ui.theme.AlxPLair2Theme
-import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
-import org.eclipse.paho.client.mqttv3.MqttCallback
-import org.eclipse.paho.client.mqttv3.MqttMessage
-import kotlin.random.Random
+//import androidx.lifecycle.viewmodel.compose.viewModel
 
-class MainActivity : ComponentActivity(),MqttCallback {
+class MainActivity : ComponentActivity() {
 
     //var myCallBack = MyCallBack
     //var myhome = MyHome()
@@ -48,7 +53,13 @@ class MainActivity : ComponentActivity(),MqttCallback {
 //                            .build())
 //                    .
 
-                app(MainViewModel())
+                //app(MainViewModel())
+                var vm = MainViewModel()
+                vm.init()
+                //vm.add()
+                //testMutableList(vm)
+                PageContent(vm)
+                //Tab1(vm)
 //                Greeting(name = "Mutable")
                 //val pagerState = remember { mutableStateOf(1) }
                 //TopAppBarSample()
@@ -59,6 +70,42 @@ class MainActivity : ComponentActivity(),MqttCallback {
             }
         }
     }
+@Composable
+    private fun testMutableList(vm: MainViewModel ) { //, roomMutable: MutableLiveData<Int>
+    //val roomList = vm.roomListMutable
+
+    //val clickCount by myViewModel.count.observeAsState(0)
+    val testMutable by vm.roomMutable.observeAsState(0)
+    Log.e(ContentValues.TAG, "Recompose")
+    Column(modifier = Modifier.fillMaxSize()) {
+
+
+        Text(
+            modifier = Modifier.padding(30.dp),
+            color = Color.Gray,
+            text = testMutable.toString()
+        )
+        Text(
+            modifier = Modifier.padding(30.dp),
+            color = Color.Gray,
+            text = vm.testMutable.value.toString() //.temperature.toString()
+        )
+        Text(
+            modifier = Modifier.padding(30.dp),
+            color = Color.Gray,
+            text = vm.testMutable.value.toString() //.temperature.toString()
+        )
+
+
+        Button(modifier = Modifier.padding(30.dp), onClick = {
+            vm.add()
+            //Log.e("mqtt","Add, temp = ${vm.roomListMutable[0].temperature}")
+        }) {
+            Text(color = Color.Gray, text = "Increase")
+        }
+    }
+    }
+
 
     @Composable
     fun PageContent(mainViewModel: MainViewModel = MainViewModel()) {
@@ -157,7 +204,7 @@ class MainActivity : ComponentActivity(),MqttCallback {
                         //Text(modifier = Modifier.background(Color.LightGray), text = "Text 2")
                         when (selectedTab.value) {
 
-                            0 -> Tab1(false,mainViewModel)
+                            0 -> Tab1(mainViewModel)
                             1 -> show2()
                             2 -> show3()
 
@@ -182,6 +229,7 @@ class MainActivity : ComponentActivity(),MqttCallback {
 
 
 
+
         Scaffold(modifier = Modifier.fillMaxSize(),
             topBar = {
                 TopAppBar(
@@ -196,35 +244,18 @@ class MainActivity : ComponentActivity(),MqttCallback {
                 )
             }
 
-        ) {
+        ) {padding->
+                Box(
+                    modifier = Modifier.padding(padding)
+                    //.padding(top = 50.dp)
+                ) {
+                    //PageContent(mainViewModel)
+                }
 
-
-            Box(
-                modifier = Modifier
-                //.padding(top = 50.dp)
-            ) {
-                PageContent(mainViewModel)
-            }
         }
 
     }
 
-    override fun connectionLost(cause: Throwable?) {
-        TODO("Not yet implemented")
-    }
-
-    override fun messageArrived(topic: String?, message: MqttMessage?) {
-        Log.e("LOG", "mqtt interface callback receive")
-        this.temperature = Random(10).nextInt()
-    }
-
-    override fun deliveryComplete(token: IMqttDeliveryToken?) {
-        Log.e("LOG", "mqtt interface callback delivery")
-    }
-
-//    override fun onReceive() {
-//        Log.e("LOG", "mqtt interface callback")
-//    }
 }
 
 
