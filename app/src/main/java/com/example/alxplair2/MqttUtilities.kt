@@ -12,27 +12,29 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import javax.net.ssl.SSLSocketFactory
 
-public data class MyHome (
-    var rooms:List<Room> = listOf(Room())
+public data class MyHome(
+    var rooms: List<Room> = listOf(Room())
 )
 
-public data class Room (
-    var roomName:String="",
-    var deviceName:String="",
-    var topic:Topic = Topic("to/$deviceName","from/$deviceName"),
+public data class Room(
+    var roomName: String = "",
+    var deviceName: String = "",
+    var topic: Topic = Topic("to/$deviceName", "from/$deviceName"),
     var ambientLight: Double = 0.0,
     var humidity: Double = 0.0,
     var cameraMicaLed: Boolean = false,
     var dimPercent: Int = -1,
-    var temperature: Double = 0.0
+    var temperature: Double = 0.0,
+    var lastMotion: Int = 0,
+    var isUpdated: Boolean = false
 )
 
 public data class Topic(
-    var topicForReceive:String = "",
-    var topicForSending:String = ""
+    var topicForReceive: String = "",
+    var topicForSending: String = ""
 )
 
-public class MqttUtilities(val cb:MqttCallback) {
+public class MqttUtilities(val cb: MqttCallback) {
     public lateinit var client: MqttClient
     public lateinit var options: MqttConnectOptions
 
@@ -70,11 +72,12 @@ public class MqttUtilities(val cb:MqttCallback) {
         val current = LocalDateTime.now().format(formatter)
 
         //room//.value?.forEach {
-            //Log.d("DEBUG", "mqtt subscribing to: ${room.value?.topic?.topicForSending.toString()}")
+        //Log.d("DEBUG", "mqtt subscribing to: ${room.value?.topic?.topicForSending.toString()}")
 //        client.subscribe("from_a36_cam_mica")
         //client.subscribe("from_a_baie")
         //}
         client.subscribe("from/#")
+        client.subscribe("from/*")
 
         //client.subscribe("a36_cam_mica")
         //client.subscribe("a36_cam_medie")
@@ -90,18 +93,11 @@ public class MqttUtilities(val cb:MqttCallback) {
     fun publishMessage(message: String, topic: String): String {
         var result: String = ""
 
-// while (!this::client.isInitialized || !client.isConnected) {
-//     result+="need to connect\n"
-//     Connect()
-//     Thread.sleep(3000)
         Log.d(
             "DEBUG",
             "mqtt publishMessage ${message}-${topic} ${this::client.isInitialized.toString()}"
         )
-        Log.d("DEBUG", "mqtt ${client.isConnected.toString()}")
-//     Log.d("DEBUG","Reconnecting to mqtt")
-// }
-//
+
         val current = LocalDateTime.now().format(formatter)
 
         var mqttMessage = MqttMessage(message.toByteArray(StandardCharsets.UTF_8))
@@ -117,28 +113,34 @@ public class MqttUtilities(val cb:MqttCallback) {
         return result
     }
 
-    fun requestStatuses() {
-        //Log.d("DEBUG","mqtt ${this::client.isInitialized.toString()}")
-        //publishMessage("sendTemperature", "to/#")
-        publishMessage("sendTemperature", "to/a36_cam_mica")
-        publishMessage("sendTemperature", "to/a_baie")
+    fun requestStatuses(topic:String = "to/*") {
+        Connect()
+        Log.d("DEBUG","mqtt requestStatuses: discovery to : $topic")
+        publishMessage("discovery", topic)
+
+        //publishMessage("sendTemperature", "to/*")
+        //publishMessage("sendTemperature", "to/a36_cam_mica")
+        //publishMessage("sendTemperature", "to/a36_cam_medie")
+        //publishMessage("sendTemperature", "to/a_baie")
     }
 
-    fun setLightsPercent(deviceName:String,percent:Int) {
-        publishMessage("lights:$percent", "to/${deviceName}")
-        requestStatuses()
+    fun setLightsPercent(deviceName: String, percent: Int) {
         Log.e("DEBUG", "mqtt setLightsPercent: $percent")
+        publishMessage("lights:$percent", "to/${deviceName}")
+        //requestStatuses("to/${deviceName}")
+
     }
 }
 
-public class TemperatureCallback(viewModel:MainViewModel) : MqttCallback  {
+public class TemperatureCallback(viewModel: MainViewModel) : MqttCallback {
     public var arrived = false
+
     //public var messageText = "x"
     public var myhome = MyHome()
-    var viewModel=viewModel
-    public var rnd:Int=0
+    var viewModel = viewModel
+    public var rnd: Int = 0
     public var message = ""
-    var room=viewModel.roomMutable
+    var room = viewModel.roomMutable
 
     override fun connectionLost(cause: Throwable?) {
         Log.e(ContentValues.TAG, "mqtt Connection Lost")
@@ -146,46 +148,50 @@ public class TemperatureCallback(viewModel:MainViewModel) : MqttCallback  {
 
     override fun messageArrived(topic: String?, message: MqttMessage?) {
         this.message = message.toString()
-//        Log.e(ContentValues.TAG,"mqtt messageArrived: ${this.message} on topic: $topic")
+        Log.e(ContentValues.TAG,"mqtt messageArrived: ${this.message} on topic: $topic")
         try {
 
-            val device = topic?.replace("from/","") ?: return
+            val device = topic?.replace("from/", "") ?: return
 
-            val (key,value) = message.toString().split(":")
-            Log.e(ContentValues.TAG,"mqtt messageArrived, topic: ${topic}, device: ${device}: key: ${key} -> $value")
+            val (key, value) = message.toString().split(":")
+            //Log.e(                ContentValues.TAG,                "mqtt messageArrived, topic: ${topic}, device: ${device}: key: ${key} -> $value"            )
 
             when (key) {
-                        "name" -> {
-                            viewModel.updateRoomName(device, value)
-                        }
-                        "random" -> {
-                            Log.e(
-                                ContentValues.TAG,
-                                "mqtt messageArrived, update random: -> $value"
-                            )
-                            viewModel.updateTemperatureToRoom(device, value.toDouble())
-                        }
-                        "temperature" -> {
-                            Log.e(ContentValues.TAG,"mqtt messageArrived, update temperature: ${device} -> $value")
-
-                            viewModel.updateTemperatureToRoom(device,value.toDouble())
-                            //viewModel._rooms//.update { it}
-                            //arrived=true
-                        }
-                        "humidity" -> {
-                            viewModel.updateHumidityToRoom(device,value.toDouble())
-                        }
-                        "ambient" -> {
-                            viewModel.updateAmbientLightToRoom(device,value.toDouble())
-                        }
-                        "dim" -> {
-                            viewModel.updateDimPercentToRoom(device,value.toInt())
-                        }
-
-                    }}
-        catch (e:Exception) {
-                    Log.e(ContentValues.TAG, "mqtt error messageArrived, ${e.toString()}")
+                "name" -> {
+                    viewModel.updateRoomName(device, value)
                 }
+                "device" -> {
+                    viewModel.updateRoomName(device, value)
+                }
+
+
+                "temperature" -> {
+//                    Log.e(
+//                        ContentValues.TAG,
+//                        "mqtt messageArrived, update temperature: ${device} -> $value"
+//                    )
+
+                    viewModel.updateTemperatureToRoom(device, value.toDouble())
+                    //viewModel._rooms//.update { it}
+                    //arrived=true
+                }
+                "humidity" -> {
+                    viewModel.updateHumidityToRoom(device, value.toDouble())
+                }
+                "ambient" -> {
+                    viewModel.updateAmbientLightToRoom(device, value.toDouble())
+                }
+                "dim" -> {
+                    viewModel.updateDimPercentToRoom(device, value.toInt())
+                }
+                "lastmotion" -> {
+                    viewModel.updateLastMotionToRoom(device,value.toInt())
+                }
+
+            }
+        } catch (e: Exception) {
+            Log.e(ContentValues.TAG, "mqtt error messageArrived, ${e.toString()}")
+        }
 
 //        viewModel.roomListMutable.value?.forEach {
 //            //Log.e(ContentValues.TAG,"mqtt messageArrived, checking room:: ${it.roomName}")
@@ -247,9 +253,8 @@ public class TemperatureCallback(viewModel:MainViewModel) : MqttCallback  {
     }
 
     override fun deliveryComplete(token: IMqttDeliveryToken?) {
-        Log.e(ContentValues.TAG,"mqtt delivered")
+        //Log.e(ContentValues.TAG, "mqtt delivered")
     }
-
 
 
 }

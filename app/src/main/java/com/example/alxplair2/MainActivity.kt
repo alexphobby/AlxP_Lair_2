@@ -8,22 +8,25 @@ package com.example.alxplair2
 
 import android.content.ContentValues
 import android.os.Bundle
+import android.os.PersistableBundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.lifecycleScope
 import com.example.alxplair2.ui.theme.AlxPLair2Theme
+import kotlinx.coroutines.launch
+
 //import androidx.lifecycle.viewmodel.compose.viewModel
 
 class MainActivity : ComponentActivity() {
@@ -32,13 +35,25 @@ class MainActivity : ComponentActivity() {
     //var myhome = MyHome()
 
     var temperature = 0
+    //var vm = MainViewModel()
+    private val vm by viewModels<MainViewModel>()
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    override fun onStop() {
+        super.onStop()
+        Log.e(ContentValues.TAG,"mqtt onStop")
+        lifecycleScope.launch {
 
-        //mqtt.cb = cb
-        //mqtt.Connect()
+            vm.mqtt.client.disconnect()
+        }
+    }
 
+    override fun onStart() {
+        super.onStart()
+
+        Log.e(ContentValues.TAG,"mqtt onStart")
+        lifecycleScope.launch {
+            vm.init()
+            vm.refresh()
         setContent {
             AlxPLair2Theme {
 
@@ -54,11 +69,15 @@ class MainActivity : ComponentActivity() {
 //                    .
 
                 //app(MainViewModel())
-                var vm = MainViewModel()
-                vm.init()
+
+                //Log.e(ContentValues.TAG,"mqtt onCreate setContent")
+
+
                 //vm.add()
                 //testMutableList(vm)
                 PageContent(vm)
+            }
+
                 //Tab1(vm)
 //                Greeting(name = "Mutable")
                 //val pagerState = remember { mutableStateOf(1) }
@@ -69,43 +88,25 @@ class MainActivity : ComponentActivity() {
 //tabsWithSwiping()
             }
         }
+
+//        vm.init()
+//
     }
-@Composable
-    private fun testMutableList(vm: MainViewModel ) { //, roomMutable: MutableLiveData<Int>
-    //val roomList = vm.roomListMutable
+    override fun onCreate(savedInstanceState: Bundle?, persistentState: PersistableBundle?) {
+        super.onCreate(savedInstanceState, persistentState)
+        Log.e(ContentValues.TAG,"mqtt onCreate")
 
-    //val clickCount by myViewModel.count.observeAsState(0)
-    val testMutable by vm.roomMutable.observeAsState(0)
-    Log.e(ContentValues.TAG, "Recompose")
-    Column(modifier = Modifier.fillMaxSize()) {
+        //  }
 
+ //   @OptIn(ExperimentalMaterialApi::class)
+//    override fun onCreate(savedInstanceState: Bundle?) {
+//        super.onCreate(savedInstanceState)
 
-        Text(
-            modifier = Modifier.padding(30.dp),
-            color = Color.Gray,
-            text = testMutable.toString()
-        )
-        Text(
-            modifier = Modifier.padding(30.dp),
-            color = Color.Gray,
-            text = vm.testMutable.value.toString() //.temperature.toString()
-        )
-        Text(
-            modifier = Modifier.padding(30.dp),
-            color = Color.Gray,
-            text = vm.testMutable.value.toString() //.temperature.toString()
-        )
+        //mqtt.cb = cb
+        //mqtt.Connect()
 
 
-        Button(modifier = Modifier.padding(30.dp), onClick = {
-            vm.add()
-            //Log.e("mqtt","Add, temp = ${vm.roomListMutable[0].temperature}")
-        }) {
-            Text(color = Color.Gray, text = "Increase")
-        }
     }
-    }
-
 
     @Composable
     fun PageContent(mainViewModel: MainViewModel = MainViewModel()) {
