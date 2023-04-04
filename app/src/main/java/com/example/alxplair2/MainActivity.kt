@@ -15,27 +15,22 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.*
+import androidx.compose.material.Tab
+import androidx.compose.material.TabRow
+import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import com.example.alxplair2.ui.theme.AlxPLair2Theme
 import kotlinx.coroutines.launch
 
-//import androidx.lifecycle.viewmodel.compose.viewModel
 
 class MainActivity : ComponentActivity() {
 
-    //var myCallBack = MyCallBack
-    //var myhome = MyHome()
-
-    var temperature = 0
-    //var vm = MainViewModel()
     private val vm by viewModels<MainViewModel>()
 
     override fun onStop() {
@@ -112,16 +107,6 @@ class MainActivity : ComponentActivity() {
     fun PageContent(mainViewModel: MainViewModel = MainViewModel()) {
         val clicked = remember { mutableStateOf(0) }
         val selectedTab = remember { mutableStateOf(0) }
-        val selectedColor = remember { mutableStateOf(Color.Black) }
-        //var isChanged by remember( myCallBack) {
-         //   mutableStateOf(myCallBack.arrived)
-
-            // Log.e("LOG", "mqtt")
-       // }
-
-        //var arrived by remember { mutableStateOf(cb.arrived) }
-
-
 
         Box(
             modifier = Modifier
@@ -200,7 +185,7 @@ class MainActivity : ComponentActivity() {
 
                 Row(modifier = Modifier.fillMaxWidth()) {
                     //Image(painter= painterResource(id = androidx.core.R.drawable.notification_template_icon_bg),"test")
-                    Column() {
+                    Column {
                         //Text(modifier = Modifier.background(Color.Gray), text = "Text 1")
                         //Text(modifier = Modifier.background(Color.LightGray), text = "Text 2")
                         when (selectedTab.value) {
@@ -219,43 +204,6 @@ class MainActivity : ComponentActivity() {
 
     }
 
-
-    @Composable
-    private fun app(mainViewModel: MainViewModel = MainViewModel()) {
-        var gradientColor1 = Color.Black
-        var gradientColor2 = Color.DarkGray
-        var gradient = arrayOf(0.3f to gradientColor1, 1.0f to gradientColor2)
-
-        mainViewModel.init() // Init MQTT connection
-
-
-
-
-        Scaffold(modifier = Modifier.fillMaxSize(),
-            topBar = {
-                TopAppBar(
-                    title = {
-                        Text(text = "AlxP's Lair", color = Color.White)
-                    },
-                    backgroundColor = Color.Transparent,
-                    modifier = Modifier
-                        .background(brush = Brush.horizontalGradient(colorStops = gradient))
-                        .height(50.dp),
-                    elevation = 0.dp,
-                )
-            }
-
-        ) {padding->
-                Box(
-                    modifier = Modifier.padding(padding)
-                    //.padding(top = 50.dp)
-                ) {
-                    //PageContent(mainViewModel)
-                }
-
-        }
-
-    }
 
 }
 
