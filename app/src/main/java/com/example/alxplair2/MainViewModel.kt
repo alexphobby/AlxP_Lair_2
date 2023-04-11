@@ -8,20 +8,17 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.alexplair.MqttUtilities
-import com.example.alexplair.MyHome
-import com.example.alexplair.Room
-import com.example.alexplair.TemperatureCallback
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 import java.io.File
 
 class MainViewModel(savedStateHandle: SavedStateHandle = SavedStateHandle()):ViewModel() {
 //    private val _temperatureList:MutableList<Int> = mutableStateListOf()
 //    val temperatureList :List<Int> = _temperatureList
-lateinit var mqtt:MqttUtilities
+lateinit var mqtt: MqttUtilities
 
 //    private var _temperatureData = MutableStateFlow((TemperatureData()))
 //    val temperatureData:StateFlow<TemperatureData> = _temperatureData.asStateFlow()
@@ -74,7 +71,19 @@ val logFile = File("/storage/emulated/0/Download/log.txt")
         //Room(deviceName="a36_cam_medie")
     )
 
+
     fun refresh() {
+        Log.e(ContentValues.TAG,"mqtt mainviewmodel refresh2")
+        viewModelScope.launch {
+            //suspend {
+            init()
+            mqtt.requestStatuses()
+            //}
+        }
+
+    }
+
+    fun refresh2() {
 
         Log.e(ContentValues.TAG,"mqtt mainviewmodel refresh")
         logFile.appendText("mqtt mainviewmodel refresh \n")
@@ -107,15 +116,22 @@ val logFile = File("/storage/emulated/0/Download/log.txt")
 
         Log.e(ContentValues.TAG,"mqtt INIT")
         //cb = MyCallBack(){addTemperature(0)}
+///        mqtt.Connect()
+try {
+    if (!this::mqtt.isInitialized) {
         mqtt = MqttUtilities(cb = TemperatureCallback(this))
+        Log.e(ContentValues.TAG, "mqtt instantiate")
+        //logFile.appendText("mqtt instantiate \n")
 
-//        if(!this::mqtt.isInitialized || !mqtt.client.isConnected) {
-//            Log.e(ContentValues.TAG, "mqtt instantiate")
-//            logFile.appendText("mqtt instantiate \n")
-//
-//            mqtt.Connect()
-//        }
-//
+    }
+    if (!mqtt.client.isConnected) {
+        mqtt.Connect()
+
+    }
+}
+catch (e:Exception) {
+    println(e.toString())
+}
 //        else{
 //        }
 
@@ -241,8 +257,42 @@ val logFile = File("/storage/emulated/0/Download/log.txt")
 
     fun updateDimPercentToRoomName(roomName: String, newDimPercent: Int) {
         val _roomIndex = roomsMutable.indexOfFirst {it.roomName == roomName }
-        Log.e(ContentValues.TAG,"mqtt MVM_updateDimPercentToRoom: ${roomName} Index: ${_roomIndex}")
+        //Log.e(ContentValues.TAG,"mqtt MVM_updateDimPercentToRoom: ${roomName} Index: ${_roomIndex}")
         roomsMutable[_roomIndex] = roomsMutable[_roomIndex].copy(dimPercent=newDimPercent)
+    }
+
+    fun updateFromDiscovery(device: String, json: String) {
+        //var newJson = json.replace(" ","")
+        //println("mqtt json $json")
+        var parsed: JSONObject = JSONObject(json)
+        var roomName:String = (parsed["roomname"]?:"") as String
+        var deviceName:String = (parsed["devicename"]?:"")  as String
+        var temperature = (parsed["temperature"]?:"").toString().toDouble()
+        var ambient = (parsed["ambient"]?:"").toString().toDouble()
+        var humidity = (parsed["humidity"]?:"").toString().toDouble()
+        var dimPercent = (parsed["dim"]?:"").toString().toInt()
+        var autoBrightness:Boolean = (parsed["autobrightness"]?:"")==true
+        var lastMotion = (parsed["lastmotion"]?:"").toString().toInt()
+        val _roomIndex = (roomsMutable.indexOfFirst {it.deviceName == device })?:-1
+
+        //println("mqtt AutoBrightness: $autoBrightness, ${(parsed["autobrightness"]?:"").toString()}")
+        if (_roomIndex == -1) {
+            println("mqtt room $roomName not found, create it")
+            roomsMutable.add(Room(roomName=roomName, deviceName = deviceName, ambientLight = ambient, temperature = temperature, humidity = humidity, dimPercent = dimPercent, lastMotion = lastMotion, autoBrightness = autoBrightness, isUpdated = true))
+        }
+        else {
+
+            println("mqtt room found, update it")
+            roomsMutable[_roomIndex] = roomsMutable[_roomIndex].copy(ambientLight = ambient, temperature = temperature, humidity = humidity, dimPercent = dimPercent, lastMotion = lastMotion, autoBrightness = autoBrightness, isUpdated = true)
+
+        }
+
+//        for (key in parsed.keys()) {
+//            println("mqtt json key: ${key}, value: ${parsed[key]} ")
+//
+//
+//        }
+
     }
 //    fun updateDimPercent(dimPercent:Int) {
 ////        _dimPercent.update { dimPercent }

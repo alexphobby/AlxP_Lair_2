@@ -1,10 +1,7 @@
-package com.example.alexplair
+package com.example.alxplair2
 
 import android.content.ContentValues
-import android.os.Build
 import android.util.Log
-import androidx.annotation.RequiresApi
-import com.example.alxplair2.MainViewModel
 import org.eclipse.paho.client.mqttv3.*
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import java.nio.charset.StandardCharsets
@@ -12,11 +9,11 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import javax.net.ssl.SSLSocketFactory
 
-public data class MyHome(
+data class MyHome(
     var rooms: List<Room> = listOf(Room())
 )
 
-public data class Room(
+data class Room(
     var roomName: String = "",
     var deviceName: String = "",
     var topic: Topic = Topic("to/$deviceName", "from/$deviceName"),
@@ -26,10 +23,11 @@ public data class Room(
     var dimPercent: Int = -1,
     var temperature: Double = 0.0,
     var lastMotion: Int = 0,
+    var autoBrightness: Boolean = false,
     var isUpdated: Boolean = false
 )
 
-public data class Topic(
+data class Topic(
     var topicForReceive: String = "",
     var topicForSending: String = ""
 )
@@ -41,9 +39,19 @@ public class MqttUtilities(val cb: MqttCallback) {
     public var formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 
     public fun Connect(): Boolean {
-        if (::client.isInitialized)
-            return true
+        if (this::client.isInitialized) {
+            println("mqtt client is initialized, connected: ${client.isConnected}")
 
+            if (client.isConnected) {
+                println("mqtt Client is already connected")
+                return true
+            }
+            else {
+                println("mqtt client not connected, connecting..")
+                client.connect()
+                return true
+            }
+        }
 
         //cb = MyCallBack
         client = MqttClient(
@@ -67,7 +75,7 @@ public class MqttUtilities(val cb: MqttCallback) {
         }
 
         //var cb = MyCallBack()
-
+        println("mqtt init obj, set callback")
         client.setCallback(cb)
         val current = LocalDateTime.now().format(formatter)
 
@@ -89,18 +97,24 @@ public class MqttUtilities(val cb: MqttCallback) {
         return true
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun publishMessage(message: String, topic: String): String {
+    //@RequiresApi(Build.VERSION_CODES.O)
+    private fun publishMessage(message: String, topic: String): String {
         var result: String = ""
 
         Log.d(
             "DEBUG",
-            "mqtt publishMessage ${message}-${topic} ${this::client.isInitialized.toString()}"
+            "mqtt publishMessage ${message}-${topic} ${this::client.isInitialized}"
         )
 
         val current = LocalDateTime.now().format(formatter)
 
         var mqttMessage = MqttMessage(message.toByteArray(StandardCharsets.UTF_8))
+
+        if (!this::client.isInitialized) {
+            println("mqtt publishmessage client not initialized, connecting")
+            Connect()
+        }
+
         if (!client.isConnected)
             client.connect(options)
 
@@ -113,9 +127,9 @@ public class MqttUtilities(val cb: MqttCallback) {
         return result
     }
 
-    fun requestStatuses(topic:String = "to/*") {
-        Connect()
-        Log.d("DEBUG","mqtt requestStatuses: discovery to : $topic")
+    fun requestStatuses(topic: String = "to/*") {
+        //Connect()
+        Log.d("DEBUG", "mqtt requestStatuses: discovery to : $topic")
         publishMessage("discovery", topic)
 
         //publishMessage("sendTemperature", "to/*")
@@ -128,6 +142,12 @@ public class MqttUtilities(val cb: MqttCallback) {
         Log.e("DEBUG", "mqtt setLightsPercent: $percent")
         publishMessage("lights:$percent", "to/${deviceName}")
         //requestStatuses("to/${deviceName}")
+
+    }
+
+    fun setAutoBrightness(deviceName: String, enabled: Boolean) {
+        Log.d("DEBUG", "mqtt autobrightness:${enabled} to/${deviceName}")
+        publishMessage("setAutoBrightness:${enabled}", "to/${deviceName}")
 
     }
 }
@@ -148,15 +168,30 @@ public class TemperatureCallback(viewModel: MainViewModel) : MqttCallback {
 
     override fun messageArrived(topic: String?, message: MqttMessage?) {
         this.message = message.toString()
-        Log.e(ContentValues.TAG,"mqtt messageArrived: ${this.message} on topic: $topic")
+
+        Log.e(ContentValues.TAG, "mqtt messageArrived: ${this.message} on topic: $topic")
         try {
-
+            var key =""
+            var value = ""
             val device = topic?.replace("from/", "") ?: return
+            var countColon = this.message.count { it == ':' }
+            //if (countColon > 1) {
+                key = this.message.toString().split(":")[0]
+                value = this.message.substring(startIndex = this.message.indexOfFirst { it == ':' }+1) //...split(":")[1:]
 
-            val (key, value) = message.toString().split(":")
+            println("mqtt key= $key, value=$value")
+            //}
+            //else {
+             //   key = this.message.toString().split(":")[0]
+
+            //}
+
             //Log.e(                ContentValues.TAG,                "mqtt messageArrived, topic: ${topic}, device: ${device}: key: ${key} -> $value"            )
 
             when (key) {
+                "jsonDiscovery" -> {
+                    viewModel.updateFromDiscovery(device, value)
+                }
                 "name" -> {
                     viewModel.updateRoomName(device, value)
                 }
@@ -185,69 +220,12 @@ public class TemperatureCallback(viewModel: MainViewModel) : MqttCallback {
                     viewModel.updateDimPercentToRoom(device, value.toInt())
                 }
                 "lastmotion" -> {
-                    viewModel.updateLastMotionToRoom(device,value.toInt())
+                    viewModel.updateLastMotionToRoom(device, value.toInt())
                 }
 
             }
         } catch (e: Exception) {
-            Log.e(ContentValues.TAG, "mqtt error messageArrived, ${e.toString()}")
-        }
-
-//        viewModel.roomListMutable.value?.forEach {
-//            //Log.e(ContentValues.TAG,"mqtt messageArrived, checking room:: ${it.roomName}")
-//            if (topic == it.topic.topicForSending) {
-//                Log.e(ContentValues.TAG,"mqtt messageArrived: ${this.message} for: ${it.roomName}")
-//                try {
-//                    var (k,v) = message.toString().split(":")
-//                    //Log.e(ContentValues.TAG, "mqtt error messageArrived, ${e.toString()}")
-//                    when (k) {
-//                        "temperature" -> {
-//                            Log.e(ContentValues.TAG,"mqtt messageArrived, update temperature: ${it.roomName} -> $v")
-//                            it.temperature = v.toDouble()
-//
-//                            viewModel.updateTemperatureToRoom(it.roomName,v.toDouble())
-//                            //viewModel._rooms//.update { it}
-//                            //arrived=true
-//                        }
-//                        "humidity" -> {
-//                            it.humidity = v.toDouble()
-//                            viewModel.updateHumidityToRoom(it.roomName,it.humidity)
-//                        }
-//                        "ambient" -> {
-//                            it.ambientLight = v.toDouble()
-//                            viewModel.updateAmbientLightToRoom(it.roomName,it.ambientLight)
-//                        }
-//                        "dim" -> {
-//                            it.dimPercent = v.toInt()//.toDouble()*100).toInt()
-//                            viewModel.updateDimPercentToRoom(it.roomName,it.dimPercent)
-//                        }
-//                    }
-//
-//                    //viewModel.updateMqttData(myhome)
-//                    //vm.addTemperature(rnd)
-//
-//                }
-//                catch (e:Exception) {
-//                    Log.e(ContentValues.TAG, "mqtt error messageArrived, ${e.toString()}")
-//                }
-//            }
-//
-//
-//        }
-
-        //var rnd = Random.nextInt(0,100)
-        //Log.e(ContentValues.TAG,"mqtt messageArrived: $message")
-//        _cbFunction(rnd)
-        //vm.addTemperature(message.toString())
-
-        //arrived = false
-        //messageText = message.toString()
-
-        //var rnd = Random.nextInt(0,1000)
-        //myhome.rnd = Random.toString()
-
-        if (topic == "a36_cam_medie") {
-
+            Log.e(ContentValues.TAG, "mqtt error messageArrived, $e")
         }
 
     }

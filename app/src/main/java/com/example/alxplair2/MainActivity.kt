@@ -23,10 +23,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import com.example.alxplair2.ui.theme.AlxPLair2Theme
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 
 
 class MainActivity : ComponentActivity() {
@@ -35,7 +37,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
-        Log.e(ContentValues.TAG,"mqtt onStop")
+        Log.e(ContentValues.TAG, "mqtt onStop")
         lifecycleScope.launch {
 
             vm.mqtt.client.disconnect()
@@ -45,12 +47,24 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
 
-        Log.e(ContentValues.TAG,"mqtt onStart")
+        Log.e(ContentValues.TAG, "mqtt onStart")
+
+        var myJson = "{\"caca\":\"50\"}"
+
+        var parsed:JSONObject = JSONObject(myJson) //= JSON.parse(Room.serializer())
+        //var res = parsed.put("test",20)
+        //var result = parsed.getJSONObject(myJson)
+        println("mqtt json ${parsed.getString("caca")}")
+
+//        for (key in parsed.keys()) {
+//            println("mqtt json ${key}")
+//        }
+
         lifecycleScope.launch {
             vm.init()
             vm.refresh()
-        setContent {
-            AlxPLair2Theme {
+            setContent {
+                AlxPLair2Theme {
 
 //                var signInRequest = BeginSignInRequest.builder()
 //                    .setGoogleIdTokenRequestOptions(
@@ -63,43 +77,29 @@ class MainActivity : ComponentActivity() {
 //                            .build())
 //                    .
 
-                //app(MainViewModel())
 
-                //Log.e(ContentValues.TAG,"mqtt onCreate setContent")
+                    PageContent(vm)
+                }
 
-
-                //vm.add()
-                //testMutableList(vm)
-                PageContent(vm)
-            }
-
-                //Tab1(vm)
-//                Greeting(name = "Mutable")
-                //val pagerState = remember { mutableStateOf(1) }
-                //TopAppBarSample()
-                //loadMainPage()
-
-                //tabsWithSwiping()
-//tabsWithSwiping()
             }
         }
 
 //        vm.init()
 //
     }
+
+    @Preview
+    @Composable
+    fun preview() {
+        //var vm = MainViewModel()
+        //Text(text = "caca", color = Color.White)
+        //CardBirou2(room = Room(), mainViewModel = vm)
+    }
+
+    
     override fun onCreate(savedInstanceState: Bundle?, persistentState: PersistableBundle?) {
         super.onCreate(savedInstanceState, persistentState)
-        Log.e(ContentValues.TAG,"mqtt onCreate")
-
-        //  }
-
- //   @OptIn(ExperimentalMaterialApi::class)
-//    override fun onCreate(savedInstanceState: Bundle?) {
-//        super.onCreate(savedInstanceState)
-
-        //mqtt.cb = cb
-        //mqtt.Connect()
-
+        Log.e(ContentValues.TAG, "mqtt onCreate")
 
     }
 
@@ -126,7 +126,7 @@ class MainActivity : ComponentActivity() {
                     backgroundColor = Color.DarkGray,
                     modifier = Modifier
                         .height(30.dp),
-                        //.clip(RoundedCornerShape(10.dp))
+                    //.clip(RoundedCornerShape(10.dp))
                     contentColor = Color.Gray
 
                 ) {
