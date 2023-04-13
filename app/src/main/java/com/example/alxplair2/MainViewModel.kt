@@ -4,21 +4,25 @@ import android.content.ContentValues
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.io.File
+import java.time.Instant
+import java.util.*
 
 class MainViewModel(savedStateHandle: SavedStateHandle = SavedStateHandle()):ViewModel() {
 //    private val _temperatureList:MutableList<Int> = mutableStateListOf()
 //    val temperatureList :List<Int> = _temperatureList
 lateinit var mqtt: MqttUtilities
+    var onUpdate = mutableStateOf(0)
 
 //    private var _temperatureData = MutableStateFlow((TemperatureData()))
 //    val temperatureData:StateFlow<TemperatureData> = _temperatureData.asStateFlow()
@@ -57,13 +61,10 @@ val logFile = File("/storage/emulated/0/Download/log.txt")
         //Room("a36_cam_mica"),
         Room("a36_cam_medie")
     )
-    //private val _roomListMutable:MutableList<Room> = mutableStateListOf()
-    //val roomListMutable: List<Room> = _roomListMutable
 
-    var testMutable = MutableLiveData<Int>(0)
-    //var testMutable: MutableState<Int.Companion> = _testMutable
 
-    var roomMutable = MutableLiveData<Room>(Room("a36_cam_mica"))
+   // val roomsMutableList = mutableListOf<Room>()
+
     var roomsMutable = mutableStateListOf<Room>(
         //Room("a36_cam_mica"),
         //Room("a36_cam_medie"),
@@ -71,19 +72,45 @@ val logFile = File("/storage/emulated/0/Download/log.txt")
         //Room(deviceName="a36_cam_medie")
     )
 
+    //val someLiveData = MutableLiveData<String>()
+
+    init {
+        viewModelScope.launch(Dispatchers.IO) {
+            // This coroutine will be canceled when the ViewModel is cleared.
+            //someLiveData.value = SomeDataRepository.fetchData()
+        delay(500)
+            try {
+                //if () {
+                    mqtt = MqttUtilities(cb = TemperatureCallback(this@MainViewModel))
+                    Log.e(ContentValues.TAG, "mqtt instantiate")
+
+                    logFile.appendText("mqtt instantiate \n")
+
+                mqtt.Connect()
+
+                //}
+                    mqtt.requestStatuses()
+            }
+            catch (e:Exception) {
+                println("mqtt error: ${e.toString()}")
+            }
+
+        }
+    }
 
     fun refresh() {
         Log.e(ContentValues.TAG,"mqtt mainviewmodel refresh2")
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             //suspend {
             init()
-            mqtt.requestStatuses()
+            //mqtt.requestStatuses()
             //}
         }
 
     }
 
     fun refresh2() {
+
 
         Log.e(ContentValues.TAG,"mqtt mainviewmodel refresh")
         logFile.appendText("mqtt mainviewmodel refresh \n")
@@ -92,7 +119,7 @@ val logFile = File("/storage/emulated/0/Download/log.txt")
             roomsMutable.clear()
         }
 
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             //suspend {
                 init()
                 mqtt.requestStatuses()
@@ -116,22 +143,8 @@ val logFile = File("/storage/emulated/0/Download/log.txt")
 
         Log.e(ContentValues.TAG,"mqtt INIT")
         //cb = MyCallBack(){addTemperature(0)}
-///        mqtt.Connect()
-try {
-    if (!this::mqtt.isInitialized) {
-        mqtt = MqttUtilities(cb = TemperatureCallback(this))
-        Log.e(ContentValues.TAG, "mqtt instantiate")
-        //logFile.appendText("mqtt instantiate \n")
+        //mqtt.Connect()
 
-    }
-    if (!mqtt.client.isConnected) {
-        mqtt.Connect()
-
-    }
-}
-catch (e:Exception) {
-    println(e.toString())
-}
 //        else{
 //        }
 
@@ -264,28 +277,81 @@ catch (e:Exception) {
     fun updateFromDiscovery(device: String, json: String) {
         //var newJson = json.replace(" ","")
         //println("mqtt json $json")
-        var parsed: JSONObject = JSONObject(json)
-        var roomName:String = (parsed["roomname"]?:"") as String
-        var deviceName:String = (parsed["devicename"]?:"")  as String
-        var temperature = (parsed["temperature"]?:"").toString().toDouble()
-        var ambient = (parsed["ambient"]?:"").toString().toDouble()
-        var humidity = (parsed["humidity"]?:"").toString().toDouble()
-        var dimPercent = (parsed["dim"]?:"").toString().toInt()
-        var autoBrightness:Boolean = (parsed["autobrightness"]?:"")==true
-        var lastMotion = (parsed["lastmotion"]?:"").toString().toInt()
-        val _roomIndex = (roomsMutable.indexOfFirst {it.deviceName == device })?:-1
+        try {
+            var parsed: JSONObject = JSONObject(json)
+            var roomName: String = (parsed["roomname"] ?: "") as String
+            var deviceName: String = (parsed["devicename"] ?: "") as String
+            var temperature = (parsed["temperature"] ?: "").toString().toDouble()
+            var ambient = (parsed["ambient"] ?: "").toString().toDouble()
+            var humidity = (parsed["humidity"] ?: "").toString().toDouble()
+            var dimPercent = (parsed["dim"] ?: "").toString().toInt()
+            var autoBrightness: Boolean = (parsed["autobrightness"] ?: "") == true
+            var lastMotion = (parsed["lastmotion"] ?: "").toString().toInt()
+            var lastUpdated = Date.from(Instant.now())
+            val _roomIndex = (roomsMutable.indexOfFirst { it.deviceName == device }) ?: -1
 
-        //println("mqtt AutoBrightness: $autoBrightness, ${(parsed["autobrightness"]?:"").toString()}")
-        if (_roomIndex == -1) {
-            println("mqtt room $roomName not found, create it")
-            roomsMutable.add(Room(roomName=roomName, deviceName = deviceName, ambientLight = ambient, temperature = temperature, humidity = humidity, dimPercent = dimPercent, lastMotion = lastMotion, autoBrightness = autoBrightness, isUpdated = true))
+            println("mqtt room $device lastupdated $lastUpdated")
+            //println("mqtt AutoBrightness: $autoBrightness, ${(parsed["autobrightness"]?:"").toString()}")
+            if (_roomIndex == -1) {
+                println("mqtt room $roomName not found, create it")
+                roomsMutable.add(
+                    Room(
+                        roomName = roomName,
+                        deviceName = deviceName,
+                        ambientLight = ambient,
+                        temperature = temperature,
+                        humidity = humidity,
+                        dimPercent = dimPercent,
+                        lastMotion = lastMotion,
+                        autoBrightness = autoBrightness,
+                        isUpdated = true,
+                        lastUpdated = lastUpdated
+                    )
+                )
+            } else {
+
+                println("mqtt room found, update it")
+                roomsMutable[_roomIndex] = roomsMutable[_roomIndex].copy(
+                    ambientLight = ambient,
+                    temperature = temperature,
+                    humidity = humidity,
+                    dimPercent = dimPercent,
+                    lastMotion = lastMotion,
+                    autoBrightness = autoBrightness,
+                    isUpdated = true,
+                    lastUpdated = lastUpdated
+                )
+
+            }
+
+            viewModelScope.launch(Dispatchers.IO) {
+                Thread.sleep(3000)
+                roomsMutable.removeAll {
+                    println("mqtt room: ${it.deviceName}, ${(Date.from(Instant.now()).time - it.lastUpdated.time)/1000/60} minute")
+                    (Date.from(Instant.now()).time - it.lastUpdated.time)/1000/60 >= 1
+
+                }
+            }
+
+
+
+
+//            roomsMutable.forEach{
+//
+//                println("mqtt room: ${it.deviceName}, ${(Date.from(Instant.now()).time - it.lastUpdated.time)/1000/60} minute")
+//              if ((Date.from(Instant.now()).time - it.lastUpdated.time)/1000/60 > 5  ) {
+//                  println("remove it")
+//                  roomsMutable.remove(it)
+//
+//                }
+
+
+
         }
-        else {
-
-            println("mqtt room found, update it")
-            roomsMutable[_roomIndex] = roomsMutable[_roomIndex].copy(ambientLight = ambient, temperature = temperature, humidity = humidity, dimPercent = dimPercent, lastMotion = lastMotion, autoBrightness = autoBrightness, isUpdated = true)
-
+        catch(ex:Exception) {
+            println("mqtt err updating room from json $ex; \n $json")
         }
+        //onUpdate.value = (0..1000).random()
 
 //        for (key in parsed.keys()) {
 //            println("mqtt json key: ${key}, value: ${parsed[key]} ")

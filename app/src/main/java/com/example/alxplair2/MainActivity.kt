@@ -28,13 +28,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import com.example.alxplair2.ui.theme.AlxPLair2Theme
 import kotlinx.coroutines.launch
-import org.json.JSONObject
 
 
 class MainActivity : ComponentActivity() {
 
     private val vm by viewModels<MainViewModel>()
-
+    //val vm = MainViewModel()
     override fun onStop() {
         super.onStop()
         Log.e(ContentValues.TAG, "mqtt onStop")
@@ -49,20 +48,45 @@ class MainActivity : ComponentActivity() {
 
         Log.e(ContentValues.TAG, "mqtt onStart")
 
-        var myJson = "{\"caca\":\"50\"}"
+        //var myJson = "{\"caca\":\"50\"}"
+//        vm.init()
+//        vm.mqtt.Connect()
+//        vm.mqtt.requestStatuses()
 
-        var parsed:JSONObject = JSONObject(myJson) //= JSON.parse(Room.serializer())
+        //var parsed:JSONObject = JSONObject(myJson) //= JSON.parse(Room.serializer())
         //var res = parsed.put("test",20)
         //var result = parsed.getJSONObject(myJson)
-        println("mqtt json ${parsed.getString("caca")}")
-
+        //println("mqtt json ${parsed.getString("caca")}")
 //        for (key in parsed.keys()) {
 //            println("mqtt json ${key}")
 //        }
+        //val workData = workDataOf("ACTION" to "INIT")
+
+//        WorkManager.getInstance(application)
+//            .beginWith(OneTimeWorkRequestBuilder<MqttWorker>()
+//                .setInputData(
+//                    workDataOf("ACTION" to "INIT"))
+//                .build())
+//            .then(OneTimeWorkRequestBuilder<MqttWorker>()
+//                .setInputData(
+//                    workDataOf("ACTION" to "REFRESH"))
+//                .build())
+//            .enqueue()
+
+
+
+//        workManager.enqueue(OneTimeWorkRequestBuilder<MqttWorker>()
+//            //.setInitialDelay(1,TimeUnit.SECONDS)
+//            .setInputData(workData)
+//
+//            .build())
+
 
         lifecycleScope.launch {
-            vm.init()
-            vm.refresh()
+            //vm.init()
+            //vm.refresh()
+        //workManager.enqueue(OneTimeWorkRequest.from(MqttWorker::class.java))
+
             setContent {
                 AlxPLair2Theme {
 
@@ -78,7 +102,15 @@ class MainActivity : ComponentActivity() {
 //                    .
 
 
-                    PageContent(vm)
+                      PageContent()
+//                    Box(
+//                        modifier = Modifier
+//                            .fillMaxSize()
+//                            .background(color = Color.DarkGray)
+//                            .padding(all = 0.dp)
+//                    ) {
+//                        Tab1()
+//                    }
                 }
 
             }
@@ -96,7 +128,7 @@ class MainActivity : ComponentActivity() {
         //CardBirou2(room = Room(), mainViewModel = vm)
     }
 
-    
+
     override fun onCreate(savedInstanceState: Bundle?, persistentState: PersistableBundle?) {
         super.onCreate(savedInstanceState, persistentState)
         Log.e(ContentValues.TAG, "mqtt onCreate")
@@ -104,9 +136,12 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun PageContent(mainViewModel: MainViewModel = MainViewModel()) {
+    fun PageContent() {
         val clicked = remember { mutableStateOf(0) }
         val selectedTab = remember { mutableStateOf(0) }
+
+        //mainViewModel.onUpdate.value
+        println("mqtt render Pagecontent")
 
         Box(
             modifier = Modifier
@@ -190,7 +225,7 @@ class MainActivity : ComponentActivity() {
                         //Text(modifier = Modifier.background(Color.LightGray), text = "Text 2")
                         when (selectedTab.value) {
 
-                            0 -> Tab1(mainViewModel)
+                            0 -> Tab1()
                             1 -> show2()
                             2 -> show3()
 

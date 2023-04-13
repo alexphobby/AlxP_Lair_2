@@ -5,8 +5,10 @@ import android.util.Log
 import org.eclipse.paho.client.mqttv3.*
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import java.nio.charset.StandardCharsets
+import java.time.Instant
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.util.*
 import javax.net.ssl.SSLSocketFactory
 
 data class MyHome(
@@ -24,7 +26,8 @@ data class Room(
     var temperature: Double = 0.0,
     var lastMotion: Int = 0,
     var autoBrightness: Boolean = false,
-    var isUpdated: Boolean = false
+    var isUpdated: Boolean = false,
+    var lastUpdated: Date = Date.from(Instant.ofEpochSecond(0))
 )
 
 data class Topic(
@@ -157,11 +160,16 @@ public class TemperatureCallback(viewModel: MainViewModel) : MqttCallback {
 
     //public var messageText = "x"
     public var myhome = MyHome()
-    var viewModel = viewModel
+    //lateinit var viewModel:MainViewModel
+
     public var rnd: Int = 0
     public var message = ""
-    var room = viewModel.roomMutable
+    var vm = viewModel
+init {
+    //viewModel= MainViewModel()
+    //var room = viewModel.roomsMutableList
 
+}
     override fun connectionLost(cause: Throwable?) {
         Log.e(ContentValues.TAG, "mqtt Connection Lost")
     }
@@ -190,13 +198,13 @@ public class TemperatureCallback(viewModel: MainViewModel) : MqttCallback {
 
             when (key) {
                 "jsonDiscovery" -> {
-                    viewModel.updateFromDiscovery(device, value)
+                    vm.updateFromDiscovery(device, value)
                 }
                 "name" -> {
-                    viewModel.updateRoomName(device, value)
+                    vm.updateRoomName(device, value)
                 }
                 "device" -> {
-                    viewModel.updateRoomName(device, value)
+                    vm.updateRoomName(device, value)
                 }
 
 
@@ -206,21 +214,21 @@ public class TemperatureCallback(viewModel: MainViewModel) : MqttCallback {
 //                        "mqtt messageArrived, update temperature: ${device} -> $value"
 //                    )
 
-                    viewModel.updateTemperatureToRoom(device, value.toDouble())
+                    vm.updateTemperatureToRoom(device, value.toDouble())
                     //viewModel._rooms//.update { it}
                     //arrived=true
                 }
                 "humidity" -> {
-                    viewModel.updateHumidityToRoom(device, value.toDouble())
+                    vm.updateHumidityToRoom(device, value.toDouble())
                 }
                 "ambient" -> {
-                    viewModel.updateAmbientLightToRoom(device, value.toDouble())
+                    vm.updateAmbientLightToRoom(device, value.toDouble())
                 }
                 "dim" -> {
-                    viewModel.updateDimPercentToRoom(device, value.toInt())
+                    vm.updateDimPercentToRoom(device, value.toInt())
                 }
                 "lastmotion" -> {
-                    viewModel.updateLastMotionToRoom(device, value.toInt())
+                    vm.updateLastMotionToRoom(device, value.toInt())
                 }
 
             }

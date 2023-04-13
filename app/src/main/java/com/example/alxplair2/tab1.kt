@@ -30,8 +30,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import java.io.File
+import java.util.*
 import kotlin.math.roundToInt
 fun getCards() {
     return
@@ -40,10 +42,12 @@ fun getCards() {
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun Tab1(vm: MainViewModel) {
+fun Tab1(vm: MainViewModel = viewModel()) {
 
     val composableScope = rememberCoroutineScope()
 
+    //vm.onUpdate.value
+    //vm.roomsMutable
     val logFile = File("/storage/emulated/0/Download/log.txt")
 
     var scrollMemory by rememberSaveable { mutableStateOf(0f) }
@@ -52,20 +56,50 @@ fun Tab1(vm: MainViewModel) {
     val refreshScope = rememberCoroutineScope()
     var refreshing by rememberSaveable { mutableStateOf(false) }
 
+    println("mqtt render tab1")
+    //vm.mqtt.requestStatuses()
+
+
+
     val pullRefreshState = rememberPullRefreshState(refreshing,{
         //vm.roomsMutable.clear()
         //vm.mqtt.requestStatuses()
+//        val myWorkRequest = OneTimeWorkRequestBuilder<MqttWorker>()
+//            .setInputData(inputData = workDataOf("ACTION" to "REFRESH"))
+//            .build()
+
+
+
         composableScope.launch {
 
             Log.e(ContentValues.TAG,"mqtt pullrefreshstate")
             logFile.appendText("mqtt pullrefresh before emptylist: ${vm.roomsMutable.toList().isEmpty()}, refreshing: ${refreshing}\n")
-            vm.refresh()
+            //vm.refresh()
+
+            try {
+                vm.mqtt.Connect()
+            }
+            catch (ex:Exception) {
+                println("mqtt error $ex")
+                logFile.appendText(
+                    "mqtt pullrefresh error $ex")
+            }
+
+            try {
+                vm.mqtt.requestStatuses()
+            }
+            catch (ex:Exception) {
+                println("mqtt error $ex")
+                logFile.appendText(
+                    "mqtt pullrefresh error $ex")
+            }
             logFile.appendText(
                 "mqtt pullrefresh after emptylist: ${
                     vm.roomsMutable.toList().isEmpty()
                 }, refreshing: ${refreshing} \n"
             )
             logFile.appendText("recompose\n")
+            //vm.refresh()
         }
     })
 
@@ -97,8 +131,8 @@ fun Tab1(vm: MainViewModel) {
 //        logFile.appendText("launchedeffect vm refresh\n")
 //
 //    }
-    Log.e(ContentValues.TAG,"mqtt emptylist: ${vm.roomsMutable.toList().isEmpty()}, refreshing: ${refreshing}")
-    logFile.appendText("mqtt emptylist: ${vm.roomsMutable.toList().isEmpty()}, refreshing: ${refreshing} \n")
+    //Log.e(ContentValues.TAG,"mqtt emptylist: ${vm.roomsMutable.toList().isEmpty()}")
+    //logFile.appendText("mqtt emptylist: ${vm.roomsMutable.toList().isEmpty()},  \n")
     if (false) {
 
 //    if (vm.roomsMutable.toList().isEmpty() && refreshing) {
@@ -124,10 +158,11 @@ fun Tab1(vm: MainViewModel) {
                 .pullRefresh(pullRefreshState)
         ) {
 
-            if(vm.roomsMutable.toList().isEmpty()) {
-                Text("No device discovered yet, pull down to refresh", color = Color.White)
-            }
-            //PullRefreshIndicator(refreshing, pullRefreshState, modifier = Modifier.align(Alignment.TopCenter))
+//            if(vm.roomsMutableList.isEmpty()) {
+//                Text("No device discovered yet, pull down to refresh", color = Color.White)
+//            }
+
+//            //PullRefreshIndicator(refreshing, pullRefreshState, modifier = Modifier.align(Alignment.TopCenter))
             // }
 //        Box(//modifier = Modifier
 //            //.pullRefresh(pullRefreshState)
@@ -138,7 +173,7 @@ fun Tab1(vm: MainViewModel) {
                     .fillMaxWidth(),
                 contentPadding = PaddingValues(16.dp)
             ) {
-                itemsIndexed(vm.roomsMutable!!) { index, item ->
+                itemsIndexed(vm.roomsMutable) { index, item ->
 
                     logFile.appendText("mqtt item, index=$index: item= ${item.roomName}")
                     Row(
@@ -200,7 +235,7 @@ fun CardBirou2(
     test:Boolean = false
 ) {
     val composableScope = rememberCoroutineScope()
-
+    //mainViewModel.onUpdate.value
     /*val roomName by mainViewModel.roomName.collectAsState()
 
     val ambientLight by mainViewModel.ambientLight.collectAsState()
@@ -488,8 +523,13 @@ fun CardBirou2(
 
                             }
 
-                            minutesAgo = ((System.currentTimeMillis()/1000 - room.lastMotion)/60).toInt()
-                            val logFile = File("/storage/emulated/0/Download/log.txt")
+                            minutesAgo = (( (TimeZone.getDefault().dstSavings + TimeZone.getDefault().rawOffset + System.currentTimeMillis())/1000 - room.lastMotion)/60).toInt()
+//                            println("mqtt  now: ${System.currentTimeMillis()/1000}  dst: ${TimeZone.getDefault().dstSavings} offset: ${TimeZone.getDefault().rawOffset}")
+//                            println("mqtt current ${System.currentTimeMillis()/1000 + TimeZone.getDefault().dstSavings + TimeZone.getDefault().rawOffset}")
+//                            println("mqtt lastmotion ${room.lastMotion}")
+//                            println("mqtt ${(( (TimeZone.getDefault().dstSavings + TimeZone.getDefault().rawOffset + System.currentTimeMillis())/1000 - room.lastMotion)/60).toInt()}")
+
+                            //val logFile = File("/storage/emulated/0/Download/log.txt")
 
                             //logFile.appendText("mqtt item, minutesago= $minutesAgo, time=${System.currentTimeMillis()/1000/60}, lastmotion: ${(room.lastMotion/60)}")
 
